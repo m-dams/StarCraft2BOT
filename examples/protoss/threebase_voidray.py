@@ -5,7 +5,7 @@ from sc2.ids.ability_id import AbilityId
 from sc2.ids.buff_id import BuffId
 from sc2.ids.unit_typeid import UnitTypeId
 from sc2.main import run_game
-from sc2.player import Bot, Computer, Human
+from sc2.player import Bot, Computer
 
 
 class ThreebaseVoidrayBot(BotAI):
@@ -54,8 +54,8 @@ class ThreebaseVoidrayBot(BotAI):
 
         # If we are low on supply, build pylon
         if (
-                self.supply_left < 2 and self.already_pending(UnitTypeId.PYLON) == 0
-                or self.supply_used > 15 and self.supply_left < 4 and self.already_pending(UnitTypeId.PYLON) < 2
+            self.supply_left < 2 and self.already_pending(UnitTypeId.PYLON) == 0
+            or self.supply_used > 15 and self.supply_left < 4 and self.already_pending(UnitTypeId.PYLON) < 2
         ):
             # Always check if you can afford something before you build it
             if self.can_afford(UnitTypeId.PYLON):
@@ -79,8 +79,8 @@ class ThreebaseVoidrayBot(BotAI):
                 # If we have gateway completed, build cyber core
                 if not self.structures(UnitTypeId.CYBERNETICSCORE):
                     if (
-                            self.can_afford(UnitTypeId.CYBERNETICSCORE)
-                            and self.already_pending(UnitTypeId.CYBERNETICSCORE) == 0
+                        self.can_afford(UnitTypeId.CYBERNETICSCORE)
+                        and self.already_pending(UnitTypeId.CYBERNETICSCORE) == 0
                     ):
                         await self.build(UnitTypeId.CYBERNETICSCORE, near=pylon)
             else:
@@ -108,9 +108,9 @@ class ThreebaseVoidrayBot(BotAI):
         if self.structures(UnitTypeId.PYLON).ready and self.structures(UnitTypeId.CYBERNETICSCORE).ready:
             pylon = self.structures(UnitTypeId.PYLON).ready.random
             if (
-                    self.townhalls.ready.amount + self.already_pending(UnitTypeId.NEXUS) >= target_base_count
-                    and self.structures(UnitTypeId.STARGATE).ready.amount + self.already_pending(UnitTypeId.STARGATE) <
-                    target_stargate_count
+                self.townhalls.ready.amount + self.already_pending(UnitTypeId.NEXUS) >= target_base_count
+                and self.structures(UnitTypeId.STARGATE).ready.amount + self.already_pending(UnitTypeId.STARGATE) <
+                target_stargate_count
             ):
                 if self.can_afford(UnitTypeId.STARGATE):
                     await self.build(UnitTypeId.STARGATE, near=pylon)
@@ -122,26 +122,12 @@ class ThreebaseVoidrayBot(BotAI):
                     sg.train(UnitTypeId.VOIDRAY)
 
 
-# enum Difficulty {
-#     VeryEasy = 1,
-#     Easy = 2,
-#     Medium = 3,
-#     MediumHard = 4,
-#     Hard = 5,
-#     HardVeryHard = 6,
-#     VeryHard = 7,
-#     CheatVision = 8,
-#     CheatMoney = 9,
-#     CheatInsane = 10
-# }
-
 def main():
-    # Human(Race.Protoss, "MKDMK", True),
     run_game(
-        maps.get("AcropolisLE"),
+        maps.get("(2)CatalystLE"),
         [Bot(Race.Protoss, ThreebaseVoidrayBot()),
-         Computer(Race.Zerg, Difficulty.Easy)],
-        realtime=True,
+         Computer(Race.Protoss, Difficulty.Easy)],
+        realtime=False,
     )
 
 
