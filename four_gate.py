@@ -7,7 +7,9 @@ from sc2.ids.unit_typeid import UnitTypeId
 from sc2.ids.upgrade_id import UpgradeId
 from sc2.main import run_game
 from sc2.player import Bot, Computer, Human
-from examples.zerg import hydralisk_push, zerg_rush, onebase_broodlord
+from examples.zerg.zerg_rush import ZergRushBot
+from examples.zerg.hydralisk_push import Hydralisk
+from examples.zerg.onebase_broodlord import BroodlordBot
 import random
 
 
@@ -15,7 +17,7 @@ class FourGateBot(BotAI):
     def __init__(self):
         self.build_step = 0
         self.cyberneticscore = False
-        self.proxy_built = False
+        self.proxy_pylon = False
 
     async def on_step(self, iteration: int):
         await self.distribute_workers()
@@ -27,14 +29,6 @@ class FourGateBot(BotAI):
         if iteration == 0:
             await self.chat_send("4-gate scrypted bot")
         nexus = self.townhalls.ready.random
-
-        # if not nexus.is_idle and not nexus.has_buff(BuffId.CHRONOBOOSTENERGYCOST):
-        #     nexuses = self.structures(UnitTypeId.NEXUS)
-        #     abilities = await self.get_available_abilities(nexuses)
-        #     for loop_nexus, abilities_nexus in zip(nexuses, abilities):
-        #         if AbilityId.EFFECT_CHRONOBOOSTENERGYCOST in abilities_nexus:
-        #             loop_nexus(AbilityId.EFFECT_CHRONOBOOSTENERGYCOST, nexus)
-        #             break
 
         if all_supply_used < 14:
             if self.can_afford(UnitTypeId.PROBE):
@@ -176,7 +170,14 @@ class FourGateBot(BotAI):
             if self.can_afford(UnitTypeId.PYLON):
                 await self.build(UnitTypeId.PYLON, near=nexus)
 
-        # if we have more than 3 STALKERS, let's attack!
+        # PROXY PYLON
+        # if not self.proxy_pylon and self.supply_used > 22:
+        #     if self.can_afford(UnitTypeId.PYLON):
+        #         await self.build(UnitTypeId.PYLON,
+        #                          near=self.enemy_start_locations[0].towards(self.game_info.map_center, 30))
+        #         self.proxy_pylon = True
+
+        # ATTACK OPTIONS
         if self.units(UnitTypeId.STALKER).amount >= 10:
             if self.enemy_units:
                 for st in self.units(UnitTypeId.STALKER).idle:
@@ -186,7 +187,6 @@ class FourGateBot(BotAI):
                 for st in self.units(UnitTypeId.STALKER).idle:
                     st.attack(random.choice(self.enemy_structures))
 
-            # otherwise attack enemy starting position
             else:
                 for st in self.units(UnitTypeId.STALKER).idle:
                     st.attack(self.enemy_start_locations[0])
@@ -203,21 +203,21 @@ class FourGateBot(BotAI):
     async def warp_new_units(self, proxy):
         warpgates = self.structures(UnitTypeId.WARPGATE).ready
         for warpgate in warpgates:
-            abilities = await self.get_available_abilities(warpgates)
-            # all the units have the same cooldown anyway so let's just look at ZEALOT
-            if AbilityId.WARPGATETRAIN_STALKER in abilities:
-                pos = proxy.position.to2.random_on_distance(4)
-                placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
-                if placement is None:
-                    return
-                warpgate.warp_in(UnitTypeId.STALKER, placement)
+            pos = proxy.position.to2.random_on_distance(4)
+            placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
+            if placement is None:
+                break
+            warpgate.warp_in(UnitTypeId.STALKER, placement)
+
 
 def main():
     # Human(Race.Protoss, "MKDMK", True),
+    # Bot(Race.Protoss, FourGateBot(),
+    # Computer(Race.Protoss, Difficulty.VeryHard),
     run_game(
         maps.get("AcropolisLE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Zerg, Difficulty.Hard)],
+         Bot(Race.Zerg, Hydralisk())],
         realtime=False,
     )
 
