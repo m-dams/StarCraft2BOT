@@ -19,6 +19,8 @@ class Sc2Env(gym.Env):
         self.action_space = spaces.Discrete(6)
         self.observation_space = spaces.Box(low=0, high=255,
                                             shape=(224, 224, 3), dtype=np.uint8)
+        self.process = None
+        self.done = False
 
     def step(self, action):
         wait_for_action = True
@@ -54,7 +56,7 @@ class Sc2Env(gym.Env):
                             # print("No state yet")
                             wait_for_state = True
                         else:
-                            # print("Got state state")
+                            # print("Got state")
                             state = state_rwd_action['state']
                             reward = state_rwd_action['reward']
                             done = state_rwd_action['done']
@@ -77,10 +79,16 @@ class Sc2Env(gym.Env):
 
         info = {}
         observation = state
+
+        # poll = self.process.poll()
+        # print(poll)
+        # if poll is not None:
+        #     self.done = True
+
         return observation, reward, done, info
 
     def reset(self):
-        print("RESETTING ENVIRONMENT!!!!!!!!!!!!!")
+        print("RESETTING ENVIRONMENT...")
         # map_state = np.zeros((176, 184, 3), dtype=np.uint8)
         map_state = np.zeros((224, 224, 3), dtype=np.uint8)
         observation = map_state
@@ -89,5 +97,5 @@ class Sc2Env(gym.Env):
             pickle.dump(data, f)
 
         # run scripted-bot.py  non-blocking:
-        subprocess.Popen([r"C:\Users\DAMS\PycharmProjects\SC2BOT\venv\Scripts\python.exe", 'scripted_bot.py'])
+        self.process = subprocess.Popen([r"C:\Users\DAMS\PycharmProjects\SC2BOT\venv\Scripts\python.exe", 'scripted_bot.py'])
         return observation  # reward, done, info can't be included

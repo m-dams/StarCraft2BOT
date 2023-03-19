@@ -17,143 +17,159 @@ import pickle
 import sys
 
 SAVE_REPLAY = False
-VISUALIZE = True
+VISUALIZE = False
 
 
 class FourGateBot(BotAI):
     def __init__(self):
+        self.last_sent = 0
         self.build_step = 0
         self.cyberneticscore = False
         self.proxy_pylon = False
         self.folder_name = f"{int(time.time())}"
+        self.model_decisions = False
+        self.step_counter = 0
         # os.mkdir(f"input_data/{self.folder_name}")
 
     async def on_step(self, iteration: int):
+        self.step_counter += 1
+        if self.step_counter % 10 != 0:
+            return
         await self.distribute_workers()
-        all_supply_used = self.supply_used + self.already_pending(UnitTypeId.PROBE)
-        if self.already_pending(UnitTypeId.PROBE) != 0:
-            all_supply_used -= 1
+
         # print(all_supply_used)
         # workers_count = self.workers.amount + self.already_pending(UnitTypeId.PROBE)
-        if iteration == 0:
-            await self.chat_send("4-gate scrypted bot")
-        nexus = self.townhalls.ready.random
+        try:
+            all_supply_used = self.supply_used + self.already_pending(UnitTypeId.PROBE)
+            if self.already_pending(UnitTypeId.PROBE) != 0:
+                all_supply_used -= 1
+            if iteration == 0:
+                await self.chat_send("4-gate scrypted bot")
+            # if self.townhalls.ready.random:
+            nexus = self.townhalls.ready.random
 
-        if all_supply_used < 14:
-            if self.can_afford(UnitTypeId.PROBE):
-                nexus.train(UnitTypeId.PROBE)
-                all_supply_used += 1
+            if all_supply_used < 14:
+                if self.can_afford(UnitTypeId.PROBE):
+                    nexus.train(UnitTypeId.PROBE)
+                    all_supply_used += 1
 
-        if all_supply_used == 14:
-            if self.can_afford(UnitTypeId.PYLON):
-                await self.build(UnitTypeId.PYLON,
-                                 near=nexus.position.towards(self.game_info.map_center, 5))
-                self.build_step = 1
+            if all_supply_used == 14:
+                if self.can_afford(UnitTypeId.PYLON):
+                    await self.build(UnitTypeId.PYLON,
+                                     near=nexus.position.towards(self.game_info.map_center, 5))
+                    self.build_step = 1
 
-        if 14 <= all_supply_used < 16 and self.build_step == 1:
-            if self.can_afford(UnitTypeId.PROBE):
-                nexus.train(UnitTypeId.PROBE)
-                all_supply_used += 1
+            if 14 <= all_supply_used < 16 and self.build_step == 1:
+                if self.can_afford(UnitTypeId.PROBE):
+                    nexus.train(UnitTypeId.PROBE)
+                    all_supply_used += 1
 
-        if all_supply_used == 16 and self.build_step == 1:
-            if self.can_afford(UnitTypeId.GATEWAY):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.GATEWAY,
-                                 near=pylon)
-                self.build_step = 2
+            if all_supply_used == 16 and self.build_step == 1:
+                if self.can_afford(UnitTypeId.GATEWAY):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.GATEWAY,
+                                     near=pylon)
+                    self.build_step = 2
 
-        if all_supply_used == 16 and self.build_step == 2:
-            if self.can_afford(UnitTypeId.PROBE):
-                nexus.train(UnitTypeId.PROBE)
-                all_supply_used += 1
+            if all_supply_used == 16 and self.build_step == 2:
+                if self.can_afford(UnitTypeId.PROBE):
+                    nexus.train(UnitTypeId.PROBE)
+                    all_supply_used += 1
 
-        if all_supply_used == 17 and self.build_step == 2:
-            for nexus in self.structures(UnitTypeId.NEXUS):
-                vespenes = self.vespene_geyser.closer_than(15, nexus)
-                for vespene in vespenes:
-                    if self.can_afford(UnitTypeId.ASSIMILATOR) and not self.already_pending(UnitTypeId.ASSIMILATOR):
-                        await self.build(UnitTypeId.ASSIMILATOR, vespene)
-                        self.build_step = 3
+            if all_supply_used == 17 and self.build_step == 2:
+                for nexus in self.structures(UnitTypeId.NEXUS):
+                    vespenes = self.vespene_geyser.closer_than(15, nexus)
+                    for vespene in vespenes:
+                        if self.can_afford(UnitTypeId.ASSIMILATOR) and not self.already_pending(UnitTypeId.ASSIMILATOR):
+                            await self.build(UnitTypeId.ASSIMILATOR, vespene)
+                            self.build_step = 3
 
-        if all_supply_used < 19 and self.build_step == 3:
-            if self.can_afford(UnitTypeId.PROBE):
-                nexus.train(UnitTypeId.PROBE)
-                all_supply_used += 1
+            if all_supply_used < 19 and self.build_step == 3:
+                if self.can_afford(UnitTypeId.PROBE):
+                    nexus.train(UnitTypeId.PROBE)
+                    all_supply_used += 1
 
-        if all_supply_used == 19 and self.build_step == 3:
-            if self.can_afford(UnitTypeId.GATEWAY):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.GATEWAY,
-                                 near=pylon)
-                self.build_step = 4
+            if all_supply_used == 19 and self.build_step == 3:
+                if self.can_afford(UnitTypeId.GATEWAY):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.GATEWAY,
+                                     near=pylon)
+                    self.build_step = 4
 
-        if all_supply_used < 22 and self.build_step == 4:
-            if self.can_afford(UnitTypeId.PROBE):
-                nexus.train(UnitTypeId.PROBE)
-                all_supply_used += 1
+            if all_supply_used < 22 and self.build_step == 4:
+                if self.can_afford(UnitTypeId.PROBE):
+                    nexus.train(UnitTypeId.PROBE)
+                    all_supply_used += 1
 
-        if all_supply_used == 22 and self.build_step == 4:
-            if self.can_afford(UnitTypeId.CYBERNETICSCORE):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.CYBERNETICSCORE,
-                                 near=pylon)
+            if all_supply_used == 22 and self.build_step == 4:
+                if self.can_afford(UnitTypeId.CYBERNETICSCORE):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.CYBERNETICSCORE,
+                                     near=pylon)
 
-        if all_supply_used == 22 and self.already_pending(UnitTypeId.CYBERNETICSCORE) and self.build_step == 4:
-            if self.can_afford(UnitTypeId.PYLON):
-                await self.build(UnitTypeId.PYLON,
-                                 near=nexus.position.towards(self.game_info.map_center, 12))
-                self.build_step = 5
+            if all_supply_used == 22 and self.already_pending(UnitTypeId.CYBERNETICSCORE) and self.build_step == 4:
+                if self.can_afford(UnitTypeId.PYLON):
+                    await self.build(UnitTypeId.PYLON,
+                                     near=nexus.position.towards(self.game_info.map_center, 12))
+                    self.build_step = 5
 
-        if all_supply_used == 22 and self.build_step == 5:
-            for nexus in self.structures(UnitTypeId.NEXUS):
-                vespenes = self.vespene_geyser.closer_than(15, nexus)
-                for vespene in vespenes:
-                    if self.can_afford(UnitTypeId.ASSIMILATOR):
-                        await self.build(UnitTypeId.ASSIMILATOR, vespene)
-                if self.already_pending(UnitTypeId.ASSIMILATOR):
-                    self.build_step = 6
+            if all_supply_used == 22 and self.build_step == 5:
+                for nexus in self.structures(UnitTypeId.NEXUS):
+                    vespenes = self.vespene_geyser.closer_than(15, nexus)
+                    for vespene in vespenes:
+                        if self.can_afford(UnitTypeId.ASSIMILATOR):
+                            await self.build(UnitTypeId.ASSIMILATOR, vespene)
+                    if self.already_pending(UnitTypeId.ASSIMILATOR):
+                        self.build_step = 6
 
-        if all_supply_used == 22 and self.build_step == 6:
-            if self.can_afford(UnitTypeId.GATEWAY):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.GATEWAY,
-                                 near=pylon)
-                self.build_step = 7
+            if all_supply_used == 22 and self.build_step == 6:
+                if self.can_afford(UnitTypeId.GATEWAY):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.GATEWAY,
+                                     near=pylon)
+                    self.build_step = 7
 
-        if self.already_pending_upgrade(
-                UpgradeId.WARPGATERESEARCH) == 0 and self.build_step == 7:
-            if self.can_afford(UpgradeId.WARPGATERESEARCH):
-                cyberneticscore_ready = self.structures(UnitTypeId.CYBERNETICSCORE).ready
-                if cyberneticscore_ready:
-                    self.research(UpgradeId.WARPGATERESEARCH)
-                    self.cyberneticscore = self.structures(UnitTypeId.CYBERNETICSCORE)[0]
-                    await self.activate_chronoboost(self.cyberneticscore)
-                    self.build_step = 8
+            if self.already_pending_upgrade(
+                    UpgradeId.WARPGATERESEARCH) == 0 and self.build_step == 7:
+                if self.can_afford(UpgradeId.WARPGATERESEARCH):
+                    cyberneticscore_ready = self.structures(UnitTypeId.CYBERNETICSCORE).ready
+                    if cyberneticscore_ready:
+                        self.research(UpgradeId.WARPGATERESEARCH)
+                        self.cyberneticscore = self.structures(UnitTypeId.CYBERNETICSCORE)[0]
+                        await self.activate_chronoboost(self.cyberneticscore)
+                        self.build_step = 8
 
-        if self.cyberneticscore:
-            if 1 > self.already_pending_upgrade(UpgradeId.WARPGATERESEARCH) > 0 and not self.cyberneticscore.has_buff(
+            if self.cyberneticscore:
+                if 1 > self.already_pending_upgrade(
+                        UpgradeId.WARPGATERESEARCH) > 0 and not self.cyberneticscore.has_buff(
                     BuffId.CHRONOBOOSTENERGYCOST):
-                await self.activate_chronoboost(self.cyberneticscore)
+                    await self.activate_chronoboost(self.cyberneticscore)
 
-        if all_supply_used < 26 and self.build_step == 8:
-            for sg in self.structures(UnitTypeId.GATEWAY).ready.idle:
-                if self.can_afford(UnitTypeId.STALKER):
-                    sg.train(UnitTypeId.STALKER)
-                    all_supply_used += 2
+            if all_supply_used < 26 and self.build_step == 8:
+                for sg in self.structures(UnitTypeId.GATEWAY).ready.idle:
+                    if self.can_afford(UnitTypeId.STALKER):
+                        sg.train(UnitTypeId.STALKER)
+                        all_supply_used += 2
 
-        if all_supply_used == 26 and self.build_step == 8:
-            if self.can_afford(UnitTypeId.GATEWAY):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.GATEWAY,
-                                 near=pylon)
-                self.build_step = 9
+            if all_supply_used == 26 and self.build_step == 8:
+                if self.can_afford(UnitTypeId.GATEWAY):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.GATEWAY,
+                                     near=pylon)
+                    self.build_step = 9
 
-        if all_supply_used == 26 and self.build_step == 9:
-            if self.can_afford(UnitTypeId.PYLON):
-                pylon = self.structures(UnitTypeId.PYLON).ready.random
-                await self.build(UnitTypeId.PYLON,
-                                 near=pylon)
-                self.build_step = 10
+            if all_supply_used == 26 and self.build_step == 9:
+                if self.can_afford(UnitTypeId.PYLON):
+                    pylon = self.structures(UnitTypeId.PYLON).ready.random
+                    await self.build(UnitTypeId.PYLON,
+                                     near=pylon)
+                    self.build_step = 10
+                    self.model_decisions = True
+                    print('Model is taking control of actions')
+        except:
+            print('Scrypt Exception')
+
+        # END OF THE SCRYPTED PART
 
         # if all_supply_used >= 26 and self.build_step == 10:
         #     for gw in self.structures(UnitTypeId.GATEWAY).ready.idle:
@@ -169,9 +185,6 @@ class FourGateBot(BotAI):
         #             gw.train(UnitTypeId.STALKER)
         #             all_supply_used += 2
 
-        # END OF THE SCRYPTED PART
-
-        # TO BE REPLACED BY SELECTIVE ACTIONS
         # if all_supply_used >= 26 and self.build_step == 10:
         #     proxy = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
         #     await self.warp_new_units(proxy)
@@ -203,7 +216,7 @@ class FourGateBot(BotAI):
         #         for st in self.units(UnitTypeId.STALKER).idle:
         #             st.attack(self.enemy_start_locations[0])
 
-        if all_supply_used >= 26 and self.build_step == 9:
+        if self.model_decisions:
             no_action = True
             while no_action:
                 try:
@@ -214,7 +227,7 @@ class FourGateBot(BotAI):
                             print("No action yet")
                             no_action = True
                         else:
-                            print("Action found")
+                            print(f"Action found - {state_rwd_action['action']}")
                             no_action = False
                 except:
                     pass
@@ -232,8 +245,6 @@ class FourGateBot(BotAI):
                 await self.exterminate()
             elif action == 5:
                 await self.fall_back()
-
-
 
         # DRAW MAP
         offset = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [-1, 1], [1, -1], [0, 0]]
@@ -345,7 +356,7 @@ class FourGateBot(BotAI):
             for stalker in self.units(UnitTypeId.STALKER):
                 # if stalker is attacking and is in range of enemy unit:
                 if stalker.is_attacking and stalker.target_in_range:
-                    if self.enemy_units.closer_than(8, stalker) or self.enemy_structures.closer_than(8, stalker):
+                    if self.enemy_units.closer_than(12, stalker) or self.enemy_structures.closer_than(12, stalker):
                         # reward += 0.005 # original was 0.005, decent results, but let's 3x it.
                         reward += 0.015
                         attack_count += 1
@@ -358,7 +369,8 @@ class FourGateBot(BotAI):
             print(f"Iter: {iteration}. RWD: {reward}. VR: {self.units(UnitTypeId.VOIDRAY).amount}")
 
         # write the file:
-        data = {"state": map_state, "reward": reward, "action": None, "done": False}  # empty action waiting for the next one!
+        data = {"state": map_state, "reward": reward, "action": None,
+                "done": False}  # empty action waiting for the next one!
 
         with open('state_rwd_action.pkl', 'wb') as f:
             pickle.dump(data, f)
@@ -437,38 +449,37 @@ class FourGateBot(BotAI):
                 else:
                     probe = random.choice(self.units(UnitTypeId.PROBE))
                 # send probe towards enemy base:
-                probe.attack(self.enemy_start_locations[0])
+                probe.attack(random.choice(self.expansion_locations_list))
                 self.last_sent = iteration
 
             except Exception as e:
                 pass
 
-    # TODO build more warpgates
-    # build more buildings/ cannons
+    # build more warpgates
     async def build_warpgates(self):
         try:
             # iterate through all nexus and see if these buildings are close
             for nexus in self.townhalls:
-                # is there is not a gateway close:
-                if not self.structures(UnitTypeId.GATEWAY).closer_than(10, nexus).exists:
-                    # if we can afford it:
-                    if self.can_afford(UnitTypeId.GATEWAY) and self.already_pending(UnitTypeId.GATEWAY) == 0:
-                        # build gateway
-                        await self.build(UnitTypeId.GATEWAY, near=nexus)
+                #     # is there is not a gateway close:
+                #     if not self.structures(UnitTypeId.GATEWAY).closer_than(10, nexus).exists:
+                #         # if we can afford it:
+                #         if self.can_afford(UnitTypeId.GATEWAY) and self.already_pending(UnitTypeId.GATEWAY) == 0:
+                #             # build gateway
+                #             await self.build(UnitTypeId.GATEWAY, near=nexus)
 
                 # if the is not a cybernetics core close:
-                if not self.structures(UnitTypeId.CYBERNETICSCORE).closer_than(10, nexus).exists:
+                if not self.structures(UnitTypeId.CYBERNETICSCORE).exists:
                     # if we can afford it:
                     if self.can_afford(UnitTypeId.CYBERNETICSCORE) and self.already_pending(
                             UnitTypeId.CYBERNETICSCORE) == 0:
                         # build cybernetics core
                         await self.build(UnitTypeId.CYBERNETICSCORE, near=nexus)
 
-                # if there is not a stargate close:
+                # if there is not a GATEWAY close:
                 if not self.structures(UnitTypeId.GATEWAY).closer_than(10, nexus).exists:
                     # if we can afford it:
                     if self.can_afford(UnitTypeId.GATEWAY) and self.already_pending(UnitTypeId.GATEWAY) == 0:
-                        # build stargate
+                        # build GATEWAY
                         await self.build(UnitTypeId.GATEWAY, near=nexus)
 
         except Exception as e:
@@ -477,10 +488,9 @@ class FourGateBot(BotAI):
     # train more army
     async def train(self):
         try:
-            if self.can_afford(UnitTypeId.STALKER):
-                for sg in self.structures(UnitTypeId.WARPGATE).ready.idle:
-                    if self.can_afford(UnitTypeId.STALKER):
-                        sg.train(UnitTypeId.STALKER)
+            proxy = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
+            await self.warp_new_units(proxy)
+            #     all_supply_used += 2
 
         except Exception as e:
             print(e)
@@ -488,7 +498,7 @@ class FourGateBot(BotAI):
     # attack starting location, expanded bases, military or defend
     async def exterminate(self):
         try:
-            # take all void rays and attack!
+            # take all stalkers and attack!
             for stalker in self.units(UnitTypeId.STALKER).idle:
                 # if we can attack:
                 if self.enemy_units.closer_than(10, stalker):
@@ -499,17 +509,22 @@ class FourGateBot(BotAI):
                     # attack!
                     stalker.attack(random.choice(self.enemy_structures.closer_than(10, stalker)))
                 # any enemy units:
-                elif self.enemy_units:
+                elif self.enemy_units.closer_than(50, self.townhalls.ready.random):
                     # attack!
                     stalker.attack(random.choice(self.enemy_units))
                 # any enemy structures:
                 elif self.enemy_structures:
-                    # attack!
-                    stalker.attack(random.choice(self.enemy_structures))
+                    if self.units(UnitTypeId.STALKER).amount >= 10:
+                        # attack!
+                        struct = random.choice(self.enemy_structures)
+                        pos = struct.position
+                        stalker.attack(pos)
                 # if we can attack:
                 elif self.enemy_start_locations:
-                    # attack!
-                    stalker.attack(self.enemy_start_locations[0])
+                    if self.units(UnitTypeId.STALKER).amount >= 10:
+                        # attack!
+                        pos = self.enemy_start_locations[0].position
+                        stalker.attack(pos)
 
         except Exception as e:
             print(e)
@@ -517,8 +532,9 @@ class FourGateBot(BotAI):
     # go back to base / proxy pylon
     async def fall_back(self):
         if self.units(UnitTypeId.STALKER).amount > 0:
-            for st in self.units(UnitTypeId.STALKER):
-                st.attack(self.start_location)
+            if self.enemy_units.amount > 4 * self.units(UnitTypeId.STALKER).amount:
+                for st in self.units(UnitTypeId.STALKER):
+                    st.attack(self.start_location)
 
 
 def main():
@@ -528,7 +544,7 @@ def main():
     result = run_game(
         maps.get("2000AtmospheresAIE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Zerg, Difficulty.Easy)],
+         Computer(Race.Terran, Difficulty.Easy)],
         realtime=False,
     )
 
@@ -546,10 +562,10 @@ def main():
     with open('state_rwd_action.pkl', 'wb') as f:
         pickle.dump(data, f)
 
-    # cv2.destroyAllWindows()
-    # cv2.waitKey(1)
-    # time.sleep(3)
-    # sys.exit()
+    cv2.destroyAllWindows()
+    cv2.waitKey(1)
+    time.sleep(3)
+    sys.exit()
 
 
 if __name__ == "__main__":
