@@ -19,6 +19,10 @@ import sys
 SAVE_REPLAY = False
 VISUALIZE = False
 
+total_steps = 10000
+steps_for_pun = np.linspace(0, 1, total_steps)
+step_punishment = ((np.exp(steps_for_pun ** 3) / 10) - 0.1) * 10
+
 
 class FourGateBot(BotAI):
     def __init__(self):
@@ -224,10 +228,10 @@ class FourGateBot(BotAI):
                         state_rwd_action = pickle.load(f)
 
                         if state_rwd_action['action'] is None:
-                            print("No action yet")
+                            # print("No action yet")
                             no_action = True
                         else:
-                            print(f"Action found - {state_rwd_action['action']}")
+                            # print(f"Action found - {state_rwd_action['action']}")
                             no_action = False
                 except:
                     pass
@@ -399,7 +403,6 @@ class FourGateBot(BotAI):
         try:
             found_something = False
             if self.supply_left < 4:
-                # build pylons.
                 if self.already_pending(UnitTypeId.PYLON) == 0:
                     if self.can_afford(UnitTypeId.PYLON):
                         await self.build(UnitTypeId.PYLON, near=random.choice(self.townhalls))
@@ -415,10 +418,7 @@ class FourGateBot(BotAI):
                             nexus.train(UnitTypeId.PROBE)
                             found_something = True
 
-                    # have we built enough assimilators?
-                    # find vespene geysers
                     for geyser in self.vespene_geyser.closer_than(10, nexus):
-                        # build assimilator if there isn't one already:
                         if not self.can_afford(UnitTypeId.ASSIMILATOR):
                             break
                         if not self.structures(UnitTypeId.ASSIMILATOR).closer_than(2.0, geyser).exists:
@@ -544,7 +544,7 @@ def main():
     result = run_game(
         maps.get("2000AtmospheresAIE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Terran, Difficulty.Easy)],
+         Computer(Race.Terran, Difficulty.Hard)],
         realtime=False,
     )
 
@@ -557,8 +557,8 @@ def main():
         f.write(f"{result}\n")
 
     # map = np.zeros((176, 184, 3), dtype=np.uint8)
-    map = np.zeros((224, 224, 3), dtype=np.uint8)
-    data = {"state": map, "reward": rwd, "action": None, "done": True}  # empty action waiting for the next one!
+    map_state = np.zeros((224, 224, 3), dtype=np.uint8)
+    data = {"state": map_state, "reward": rwd, "action": None, "done": True}  # empty action waiting for the next one!
     with open('state_rwd_action.pkl', 'wb') as f:
         pickle.dump(data, f)
 

@@ -1,4 +1,3 @@
-# $ source C:\Users\DAMS\PycharmProjects\SC2BOT\venv\Scripts\activate
 import gym
 from gym import spaces
 import numpy as np
@@ -65,26 +64,20 @@ class Sc2Env(gym.Env):
             except Exception as e:
                 wait_for_state = True
                 # map = np.zeros((176, 184, 3), dtype=np.uint8)
-                map = np.zeros((224, 224, 3), dtype=np.uint8)
-                observation = map
+                map_state = np.zeros((224, 224, 3), dtype=np.uint8)
+                observation = map_state
                 # if still failing, input an ACTION, 3 (scout)
-                data = {"state": map, "reward": 0, "action": 3, "done": False}  # empty action waiting for the next one!
+                data = {"state": map_state, "reward": 0, "action": 3, "done": False}  # empty action waiting for the next one!
                 with open('state_rwd_action.pkl', 'wb') as f:
                     pickle.dump(data, f)
 
-                state = map
+                state = map_state
                 reward = 0
                 done = False
                 action = 3
 
         info = {}
         observation = state
-
-        # poll = self.process.poll()
-        # print(poll)
-        # if poll is not None:
-        #     self.done = True
-
         return observation, reward, done, info
 
     def reset(self):
@@ -98,4 +91,5 @@ class Sc2Env(gym.Env):
 
         # run scripted-bot.py  non-blocking:
         self.process = subprocess.Popen([r"C:\Users\DAMS\PycharmProjects\SC2BOT\venv\Scripts\python.exe", 'scripted_bot.py'])
+
         return observation  # reward, done, info can't be included
