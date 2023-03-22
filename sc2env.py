@@ -23,9 +23,7 @@ class Sc2Env(gym.Env):
 
     def step(self, action):
         wait_for_action = True
-        # waits for action.
         while wait_for_action:
-            # print("waiting for action")
             try:
                 with open('state_rwd_action.pkl', 'rb') as f:
                     state_rwd_action = pickle.load(f)
@@ -38,10 +36,8 @@ class Sc2Env(gym.Env):
                         wait_for_action = False
                         state_rwd_action['action'] = action
                         with open('state_rwd_action.pkl', 'wb') as f:
-                            # now we've added the action.
                             pickle.dump(state_rwd_action, f)
             except Exception as e:
-                # print(str(e))
                 pass
 
         # waits for the new state to return (map and reward) (no new action yet. )

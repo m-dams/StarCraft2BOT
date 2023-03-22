@@ -16,12 +16,7 @@ import os
 import pickle
 import sys
 
-SAVE_REPLAY = False
 VISUALIZE = False
-
-total_steps = 10000
-steps_for_pun = np.linspace(0, 1, total_steps)
-step_punishment = ((np.exp(steps_for_pun ** 3) / 10) - 0.1) * 10
 
 
 class FourGateBot(BotAI):
@@ -33,7 +28,6 @@ class FourGateBot(BotAI):
         self.folder_name = f"{int(time.time())}"
         self.model_decisions = False
         self.step_counter = 0
-        # os.mkdir(f"input_data/{self.folder_name}")
 
     async def on_step(self, iteration: int):
         self.step_counter += 1
@@ -41,15 +35,12 @@ class FourGateBot(BotAI):
             return
         await self.distribute_workers()
 
-        # print(all_supply_used)
-        # workers_count = self.workers.amount + self.already_pending(UnitTypeId.PROBE)
         try:
             all_supply_used = self.supply_used + self.already_pending(UnitTypeId.PROBE)
             if self.already_pending(UnitTypeId.PROBE) != 0:
                 all_supply_used -= 1
             if iteration == 0:
                 await self.chat_send("4-gate scrypted bot")
-            # if self.townhalls.ready.random:
             nexus = self.townhalls.ready.random
 
             if all_supply_used < 14:
@@ -248,7 +239,7 @@ class FourGateBot(BotAI):
             elif action == 4:
                 await self.exterminate()
             elif action == 5:
-                await self.fall_back()
+                await self.group_units()
 
         # DRAW MAP
         offset = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [-1, 1], [1, -1], [0, 0]]
@@ -258,6 +249,7 @@ class FourGateBot(BotAI):
         protoss_ground_units = [UnitTypeId.STALKER, UnitTypeId.ZEALOT, UnitTypeId.SENTRY]
         # print(self.game_info.map_size[1])
         # print(self.game_info.map_size[0])
+
         # draw the minerals:
         for mineral in self.mineral_field:
             pos = mineral.position
@@ -348,15 +340,10 @@ class FourGateBot(BotAI):
             cv2.imshow('map', cv2.flip(cv2.resize(map_state, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST), 0))
             cv2.waitKey(1)
 
-        if SAVE_REPLAY:
-            # save map image into "replays dir"
-            cv2.imwrite(f"input_data/{self.folder_name}/{int(time.time())}-{iteration}.png", map_state)
-
         reward = 0
 
         try:
             attack_count = 0
-            # iterate through our stalkers:
             for stalker in self.units(UnitTypeId.STALKER):
                 # if stalker is attacking and is in range of enemy unit:
                 if stalker.is_attacking and stalker.target_in_range:
@@ -411,9 +398,8 @@ class FourGateBot(BotAI):
             if not found_something:
 
                 for nexus in self.townhalls:
-                    # get worker count for this nexus:
                     worker_count = len(self.workers.closer_than(10, nexus))
-                    if worker_count < 22:  # 16+3+3
+                    if worker_count < 22:
                         if nexus.is_idle and self.can_afford(UnitTypeId.PROBE):
                             nexus.train(UnitTypeId.PROBE)
                             found_something = True
@@ -434,19 +420,14 @@ class FourGateBot(BotAI):
 
     # check how far the enemy is expanding
     async def explore(self, iteration):
-        # are there any idle probes:
         try:
             self.last_sent
         except:
             self.last_sent = 0
 
-        # if self.last_sent doesnt exist yet:
         if (iteration - self.last_sent) > 200:
             try:
-                if self.units(UnitTypeId.PROBE).idle.exists:
-                    # pick one of these randomly:
-                    probe = random.choice(self.units(UnitTypeId.PROBE).idle)
-                else:
+                if self.units(UnitTypeId.PROBE).exists:
                     probe = random.choice(self.units(UnitTypeId.PROBE))
                 # send probe towards enemy base:
                 probe.attack(random.choice(self.expansion_locations_list))
@@ -458,28 +439,14 @@ class FourGateBot(BotAI):
     # build more warpgates
     async def build_warpgates(self):
         try:
-            # iterate through all nexus and see if these buildings are close
             for nexus in self.townhalls:
-                #     # is there is not a gateway close:
-                #     if not self.structures(UnitTypeId.GATEWAY).closer_than(10, nexus).exists:
-                #         # if we can afford it:
-                #         if self.can_afford(UnitTypeId.GATEWAY) and self.already_pending(UnitTypeId.GATEWAY) == 0:
-                #             # build gateway
-                #             await self.build(UnitTypeId.GATEWAY, near=nexus)
-
-                # if the is not a cybernetics core close:
                 if not self.structures(UnitTypeId.CYBERNETICSCORE).exists:
-                    # if we can afford it:
                     if self.can_afford(UnitTypeId.CYBERNETICSCORE) and self.already_pending(
-                            UnitTypeId.CYBERNETICSCORE) == 0:
-                        # build cybernetics core
+                            UnitTypeId.CYBERNETICSCORE) == 0 and self.structures(UnitTypeId.GATEWAY).exists:
                         await self.build(UnitTypeId.CYBERNETICSCORE, near=nexus)
 
-                # if there is not a GATEWAY close:
                 if not self.structures(UnitTypeId.GATEWAY).closer_than(10, nexus).exists:
-                    # if we can afford it:
                     if self.can_afford(UnitTypeId.GATEWAY) and self.already_pending(UnitTypeId.GATEWAY) == 0:
-                        # build GATEWAY
                         await self.build(UnitTypeId.GATEWAY, near=nexus)
 
         except Exception as e:
@@ -490,7 +457,6 @@ class FourGateBot(BotAI):
         try:
             proxy = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
             await self.warp_new_units(proxy)
-            #     all_supply_used += 2
 
         except Exception as e:
             print(e)
@@ -498,43 +464,38 @@ class FourGateBot(BotAI):
     # attack starting location, expanded bases, military or defend
     async def exterminate(self):
         try:
-            # take all stalkers and attack!
             for stalker in self.units(UnitTypeId.STALKER).idle:
-                # if we can attack:
                 if self.enemy_units.closer_than(10, stalker):
-                    # attack!
                     stalker.attack(random.choice(self.enemy_units.closer_than(10, stalker)))
-                # if we can attack:
+
                 elif self.enemy_structures.closer_than(10, stalker):
-                    # attack!
                     stalker.attack(random.choice(self.enemy_structures.closer_than(10, stalker)))
-                # any enemy units:
-                elif self.enemy_units.closer_than(50, self.townhalls.ready.random):
-                    # attack!
+
+                elif self.enemy_units:
                     stalker.attack(random.choice(self.enemy_units))
-                # any enemy structures:
+
                 elif self.enemy_structures:
                     if self.units(UnitTypeId.STALKER).amount >= 10:
-                        # attack!
                         struct = random.choice(self.enemy_structures)
                         pos = struct.position
                         stalker.attack(pos)
-                # if we can attack:
+
                 elif self.enemy_start_locations:
                     if self.units(UnitTypeId.STALKER).amount >= 10:
-                        # attack!
                         pos = self.enemy_start_locations[0].position
                         stalker.attack(pos)
 
         except Exception as e:
             print(e)
 
-    # go back to base / proxy pylon
-    async def fall_back(self):
+    # group units
+    async def group_units(self):
         if self.units(UnitTypeId.STALKER).amount > 0:
-            if self.enemy_units.amount > 4 * self.units(UnitTypeId.STALKER).amount:
-                for st in self.units(UnitTypeId.STALKER):
-                    st.attack(self.start_location)
+            if self.townhalls:
+                nexus = self.townhalls[-1]
+                pos = nexus.position.towards(self.game_info.map_center, 10)
+                for stalker in self.units(UnitTypeId.STALKER).idle:
+                    stalker.attack(pos)
 
 
 def main():
@@ -544,7 +505,7 @@ def main():
     result = run_game(
         maps.get("2000AtmospheresAIE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Terran, Difficulty.Hard)],
+         Computer(Race.Protoss, Difficulty.Hard)],
         realtime=False,
     )
 
