@@ -17,12 +17,16 @@ import pickle
 import sys
 
 VISUALIZE = False
+OLD_MAP = False
+MODEL_PLAYING = True
+HEIGHT = 168
+WIDTH = 184
 
 
 class FourGateBot(BotAI):
     def __init__(self):
         self.last_sent = 0
-        self.build_step = 0
+        self.build_step = -1
         self.cyberneticscore = False
         self.proxy_pylon = False
         self.folder_name = f"{int(time.time())}"
@@ -39,14 +43,24 @@ class FourGateBot(BotAI):
             all_supply_used = self.supply_used + self.already_pending(UnitTypeId.PROBE)
             if self.already_pending(UnitTypeId.PROBE) != 0:
                 all_supply_used -= 1
-            if iteration == 0:
-                await self.chat_send("4-gate scrypted bot")
             nexus = self.townhalls.ready.random
+
+            if OLD_MAP:
+                if all_supply_used < 9:
+                    if self.can_afford(UnitTypeId.PROBE):
+                        nexus.train(UnitTypeId.PROBE)
+                        all_supply_used += 1
+
+                if all_supply_used == 9:
+                    if self.can_afford(UnitTypeId.PYLON):
+                        await self.build(UnitTypeId.PYLON,
+                                         near=nexus.position.towards(self.game_info.map_center, 5))
 
             if all_supply_used < 14:
                 if self.can_afford(UnitTypeId.PROBE):
                     nexus.train(UnitTypeId.PROBE)
                     all_supply_used += 1
+
 
             if all_supply_used == 14:
                 if self.can_afford(UnitTypeId.PYLON):
@@ -165,51 +179,52 @@ class FourGateBot(BotAI):
             print('Scrypt Exception')
 
         # END OF THE SCRYPTED PART
+        if not MODEL_PLAYING:
+            if all_supply_used >= 26 and self.build_step == 10:
+                for gw in self.structures(UnitTypeId.GATEWAY).ready.idle:
+                    gateways = self.structures(UnitTypeId.GATEWAY).ready.idle
+                    if self.already_pending_upgrade(UpgradeId.WARPGATERESEARCH) == 1:
+                        abilities = await self.get_available_abilities(gateways)
+                        if AbilityId.MORPH_WARPGATE in abilities:
+                            for loop_nexus, abilities_nexus in zip(gateways, abilities):
+                                if AbilityId.MORPH_WARPGATE in abilities_nexus:
+                                    loop_nexus(AbilityId.MORPH_WARPGATE, gw)
+                                    break
+                    elif self.can_afford(UnitTypeId.STALKER):
+                        gw.train(UnitTypeId.STALKER)
+                        all_supply_used += 2
 
-        # if all_supply_used >= 26 and self.build_step == 10:
-        #     for gw in self.structures(UnitTypeId.GATEWAY).ready.idle:
-        #         gateways = self.structures(UnitTypeId.GATEWAY).ready.idle
-        #         if self.already_pending_upgrade(UpgradeId.WARPGATERESEARCH) == 1:
-        #             abilities = await self.get_available_abilities(gateways)
-        #             if AbilityId.MORPH_WARPGATE in abilities:
-        #                 for loop_nexus, abilities_nexus in zip(gateways, abilities):
-        #                     if AbilityId.MORPH_WARPGATE in abilities_nexus:
-        #                         loop_nexus(AbilityId.MORPH_WARPGATE, gw)
-        #                         break
-        #         elif self.can_afford(UnitTypeId.STALKER):
-        #             gw.train(UnitTypeId.STALKER)
-        #             all_supply_used += 2
+            if all_supply_used >= 26 and self.build_step == 10:
+                proxy = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
+                await self.warp_new_units(proxy)
+                all_supply_used += 2
 
-        # if all_supply_used >= 26 and self.build_step == 10:
-        #     proxy = self.structures(UnitTypeId.PYLON).closest_to(self.enemy_start_locations[0])
-        #     await self.warp_new_units(proxy)
-        #     all_supply_used += 2
-        #
-        # supply_remaining = self.supply_cap - self.supply_used
-        # if supply_remaining < 8 and self.already_pending(UnitTypeId.PYLON) == 0:
-        #     if self.can_afford(UnitTypeId.PYLON):
-        #         await self.build(UnitTypeId.PYLON, near=nexus)
+            supply_remaining = self.supply_cap - self.supply_used
+            if supply_remaining < 8 and self.already_pending(UnitTypeId.PYLON) == 0:
+                if self.can_afford(UnitTypeId.PYLON):
+                    await self.build(UnitTypeId.PYLON, near=nexus)
 
-        # PROXY PYLON
-        # if not self.proxy_pylon and self.supply_used > 22:
-        #     if self.can_afford(UnitTypeId.PYLON):
-        #         await self.build(UnitTypeId.PYLON,
-        #                          near=self.enemy_start_locations[0].towards(self.game_info.map_center, 30))
-        #         self.proxy_pylon = True
+            # PROXY PYLON
+            if not self.proxy_pylon and self.supply_used > 22:
+                if self.can_afford(UnitTypeId.PYLON):
+                    await self.build(UnitTypeId.PYLON,
+                                     near=self.enemy_start_locations[0].towards(self.game_info.map_center, 30))
+                    self.proxy_pylon = True
 
-        # ATTACK OPTIONS
-        # if self.units(UnitTypeId.STALKER).amount >= 10:
-        #     if self.enemy_units:
-        #         for st in self.units(UnitTypeId.STALKER).idle:
-        #             st.attack(random.choice(self.enemy_units))
-        #
-        #     elif self.enemy_structures:
-        #         for st in self.units(UnitTypeId.STALKER).idle:
-        #             st.attack(random.choice(self.enemy_structures))
-        #
-        #     else:
-        #         for st in self.units(UnitTypeId.STALKER).idle:
-        #             st.attack(self.enemy_start_locations[0])
+            # ATTACK OPTIONS
+            if self.units(UnitTypeId.STALKER).amount + self.units(UnitTypeId.ZEALOT).amount >= 10:
+                attack_units =  self.units(UnitTypeId.STALKER) + self.units(UnitTypeId.ZEALOT)
+                if self.enemy_units:
+                    for st in attack_units.idle:
+                        st.attack(random.choice(self.enemy_units))
+
+                elif self.enemy_structures:
+                    for st in attack_units.idle:
+                        st.attack(random.choice(self.enemy_structures))
+
+                else:
+                    for st in attack_units.idle:
+                        st.attack(self.enemy_start_locations[0])
 
         if self.model_decisions:
             no_action = True
@@ -243,7 +258,7 @@ class FourGateBot(BotAI):
 
         # DRAW MAP
         offset = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, -1], [-1, 1], [1, -1], [0, 0]]
-        map_state = np.zeros((self.game_info.map_size[0], self.game_info.map_size[1], 3), dtype=np.uint8)
+        map_state = np.zeros((self.game_info.map_size[1], self.game_info.map_size[0], 3), dtype=np.uint8)
         base_buildings = [UnitTypeId.NEXUS, UnitTypeId.HATCHERY, UnitTypeId.COMMANDCENTER, UnitTypeId.LAIR,
                           UnitTypeId.HIVE]
         protoss_ground_units = [UnitTypeId.STALKER, UnitTypeId.ZEALOT, UnitTypeId.SENTRY]
@@ -254,7 +269,10 @@ class FourGateBot(BotAI):
         for mineral in self.mineral_field:
             pos = mineral.position
             c = [175, 255, 255]
-            fraction = mineral.mineral_contents / 1800
+            if OLD_MAP:
+                fraction = mineral.mineral_contents / 1500
+            else:
+                fraction = mineral.mineral_contents / 1800
             if mineral.is_visible:
                 map_state[math.ceil(pos.y)][math.ceil(pos.x)] = [int(fraction * i) for i in c]
             else:
@@ -313,7 +331,10 @@ class FourGateBot(BotAI):
         for vespene in self.vespene_geyser:
             pos = vespene.position
             c = [255, 175, 255]
-            fraction = vespene.vespene_contents / 2250
+            if OLD_MAP:
+                fraction = vespene.vespene_contents / 2500
+            else:
+                fraction = vespene.vespene_contents / 2250
 
             if vespene.is_visible:
                 map_state[math.ceil(pos.y)][math.ceil(pos.x)] = [int(fraction * i) for i in c]
@@ -335,8 +356,6 @@ class FourGateBot(BotAI):
                 map_state[math.ceil(pos.y)][math.ceil(pos.x)] = [int(fraction * i) for i in c]
 
         if VISUALIZE:
-            # show map with opencv, resized to be larger:
-            # horizontal flip:
             cv2.imshow('map', cv2.flip(cv2.resize(map_state, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST), 0))
             cv2.waitKey(1)
 
@@ -344,10 +363,11 @@ class FourGateBot(BotAI):
 
         try:
             attack_count = 0
-            for stalker in self.units(UnitTypeId.STALKER):
-                # if stalker is attacking and is in range of enemy unit:
-                if stalker.is_attacking and stalker.target_in_range:
-                    if self.enemy_units.closer_than(12, stalker) or self.enemy_structures.closer_than(12, stalker):
+            attack_units = self.units(UnitTypeId.STALKER) + self.units(UnitTypeId.ZEALOT)
+            for unit in attack_units:
+                # if unit is attacking and is in range of enemy unit:
+                if unit.is_attacking and unit.target_in_range:
+                    if self.enemy_units.closer_than(12, unit) or self.enemy_structures.closer_than(12, unit):
                         # reward += 0.005 # original was 0.005, decent results, but let's 3x it.
                         reward += 0.015
                         attack_count += 1
@@ -378,11 +398,18 @@ class FourGateBot(BotAI):
     async def warp_new_units(self, proxy):
         warpgates = self.structures(UnitTypeId.WARPGATE).ready
         for warpgate in warpgates:
+            unit_type = random.randint(0, 1)
             pos = proxy.position.to2.random_on_distance(4)
-            placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
-            if placement is None:
-                break
-            warpgate.warp_in(UnitTypeId.STALKER, placement)
+            if unit_type == 1:
+                placement = await self.find_placement(AbilityId.WARPGATETRAIN_STALKER, pos, placement_step=1)
+                if placement is None:
+                    break
+                warpgate.warp_in(UnitTypeId.STALKER, placement)
+            elif unit_type == 0:
+                placement = await self.find_placement(AbilityId.WARPGATETRAIN_ZEALOT, pos, placement_step=1)
+                if placement is None:
+                    break
+                warpgate.warp_in(UnitTypeId.ZEALOT, placement)
 
     # SELECTABLE ACTIONS
     # build new base or build probes
@@ -464,7 +491,8 @@ class FourGateBot(BotAI):
     # attack starting location, expanded bases, military or defend
     async def exterminate(self):
         try:
-            for stalker in self.units(UnitTypeId.STALKER).idle:
+            attack_units = self.units(UnitTypeId.STALKER) + self.units(UnitTypeId.ZEALOT)
+            for stalker in attack_units.idle:
                 if self.enemy_units.closer_than(10, stalker):
                     stalker.attack(random.choice(self.enemy_units.closer_than(10, stalker)))
 
@@ -490,11 +518,12 @@ class FourGateBot(BotAI):
 
     # group units
     async def group_units(self):
-        if self.units(UnitTypeId.STALKER).amount > 0:
+        attack_units = self.units(UnitTypeId.STALKER) + self.units(UnitTypeId.ZEALOT)
+        if attack_units.amount > 0:
             if self.townhalls:
                 nexus = self.townhalls[-1]
                 pos = nexus.position.towards(self.game_info.map_center, 10)
-                for stalker in self.units(UnitTypeId.STALKER).idle:
+                for stalker in attack_units.idle:
                     stalker.attack(pos)
 
 
@@ -503,9 +532,9 @@ def main():
     # Bot(Race.Protoss, FourGateBot(),
     # Computer(Race.Protoss, Difficulty.VeryHard),
     result = run_game(
-        maps.get("2000AtmospheresAIE"),
+        maps.get("BlackburnAIE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Protoss, Difficulty.Hard)],
+         Computer(Race.Terran, Difficulty.Hard)],
         realtime=False,
     )
 
@@ -517,8 +546,7 @@ def main():
     with open("results.txt", "a") as f:
         f.write(f"{result}\n")
 
-    # map = np.zeros((176, 184, 3), dtype=np.uint8)
-    map_state = np.zeros((224, 224, 3), dtype=np.uint8)
+    map_state = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
     data = {"state": map_state, "reward": rwd, "action": None, "done": True}  # empty action waiting for the next one!
     with open('state_rwd_action.pkl', 'wb') as f:
         pickle.dump(data, f)

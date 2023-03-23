@@ -4,13 +4,13 @@ from sc2env import Sc2Env
 import time
 import wandb
 
-
-LOAD_MODEL = "models/1679495600/5000.zip"
+timestamp = 1679577042
+LOAD_MODEL = "models/1679577042/5000.zip"
 
 env = Sc2Env()
 model = PPO.load(LOAD_MODEL, env=env)
 
-model_name = f"{int(time.time())}"
+model_name = f"{timestamp}"
 models_dir = f"models/{model_name}/"
 logdir = f"logs/{model_name}/"
 
@@ -31,7 +31,7 @@ run = wandb.init(
 
 # further train:
 TIMESTEPS = 10000
-iters = 0
+iters = 1
 while True:
     print("On iteration: ", iters)
     iters += 1

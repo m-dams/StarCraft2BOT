@@ -8,7 +8,7 @@ model_name = f"{int(time.time())}"
 models_dir = f"models/{model_name}/"
 logdir = f"logs/{model_name}/"
 
-conf_dict = {"Model": "Easy Terran",
+conf_dict = {"Model": "Hard Terran",
              "Machine": "DESKTOP",
              "policy": "MlpPolicy",
              "model_save_name": model_name}
