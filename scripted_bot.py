@@ -534,14 +534,14 @@ def main():
     result = run_game(
         maps.get("BlackburnAIE"),
         [Bot(Race.Protoss, FourGateBot()),
-         Computer(Race.Terran, Difficulty.Hard)],
+         Computer(Race.Zerg, Difficulty.Hard)],
         realtime=False,
     )
 
     if str(result) == "Result.Victory":
-        rwd = 500
+        rwd = 300
     else:
-        rwd = -500
+        rwd = -300
 
     with open("results.txt", "a") as f:
         f.write(f"{result}\n")
